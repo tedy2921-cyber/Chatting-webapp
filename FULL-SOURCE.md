@@ -1,0 +1,1548 @@
+# Smart Chat Application — full source
+
+Complete, runnable source of the single-file app. Everything below is verbatim from `index.html` (HTML + CSS + JS, no dependencies, no network calls). Save it as `index.html` and open it in a browser.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nova Chat — Smart Chat Application</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%236366f1'/><stop offset='1' stop-color='%2322d3ee'/></linearGradient></defs><rect width='32' height='32' rx='9' fill='url(%23g)'/><path d='M9 22V10l14 12V10' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+<style>
+  :root{
+    --bg:#070a12;
+    --bg-2:#0b0f1a;
+    --panel:#111725;
+    --panel-2:#151d2e;
+    --line:rgba(255,255,255,.08);
+    --line-2:rgba(255,255,255,.14);
+    --txt:#e8ecf5;
+    --txt-2:#a4b0c6;
+    --txt-3:#6f7d96;
+    --brand:#6366f1;
+    --brand-2:#22d3ee;
+    --ok:#34d399;
+    --warn:#fbbf24;
+    --err:#f87171;
+    --grad:linear-gradient(135deg,#6366f1 0%,#8b5cf6 45%,#22d3ee 100%);
+    --radius:14px;
+    --shadow:0 18px 50px rgba(0,0,0,.55);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;overflow:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:-20% -10% auto -10%;height:520px;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(600px 320px at 20% 0%,rgba(99,102,241,.22),transparent 60%),
+      radial-gradient(520px 300px at 80% 10%,rgba(34,211,238,.16),transparent 60%);
+    filter:blur(10px);
+  }
+  button,input,textarea{font-family:inherit;color:inherit}
+  button{cursor:pointer;border:0;background:none}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:20px;border:3px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.22);background-clip:content-box}
+
+  /* ---------- shell ---------- */
+  .app{position:relative;z-index:1;display:grid;grid-template-columns:280px 1fr;height:100vh;height:100dvh}
+
+  /* ---------- sidebar ---------- */
+  .side{
+    display:flex;flex-direction:column;gap:14px;padding:16px 14px;
+    background:linear-gradient(180deg,rgba(17,23,37,.9),rgba(9,13,22,.9));
+    border-right:1px solid var(--line);backdrop-filter:blur(14px);min-width:0;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 6px 10px}
+  .logo{width:34px;height:34px;border-radius:10px;background:var(--grad);display:grid;place-items:center;
+    box-shadow:0 6px 18px rgba(99,102,241,.35);flex:0 0 auto}
+  .logo svg{width:19px;height:19px}
+  .brand h1{font-size:15px;margin:0;letter-spacing:.2px}
+  .brand .sub{font-size:11px;color:var(--txt-3);margin-top:2px}
+  .btn-new{
+    display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px 12px;
+    border-radius:11px;background:var(--grad);color:#fff;font-weight:600;font-size:13.5px;
+    box-shadow:0 10px 24px rgba(80,90,220,.32);transition:transform .12s ease,filter .2s ease;
+  }
+  .btn-new:hover{filter:brightness(1.08)}
+  .btn-new:active{transform:translateY(1px)}
+  .search{position:relative}
+  .search input{
+    width:100%;padding:9px 10px 9px 32px;border-radius:10px;background:rgba(255,255,255,.04);
+    border:1px solid var(--line);font-size:13px;outline:none;transition:border-color .2s,background .2s;
+  }
+  .search input:focus{border-color:rgba(99,102,241,.7);background:rgba(255,255,255,.06)}
+  .search input::placeholder{color:var(--txt-3)}
+  .search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--txt-3)}
+  .convs{flex:1;overflow-y:auto;margin:0 -6px;padding:0 6px;display:flex;flex-direction:column;gap:4px}
+  .conv-h{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-3);padding:8px 8px 4px}
+  .conv{
+    position:relative;display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;
+    color:var(--txt-2);font-size:13px;transition:background .16s,color .16s;cursor:pointer;
+  }
+  .conv:hover{background:rgba(255,255,255,.045);color:var(--txt)}
+  .conv.active{background:rgba(99,102,241,.14);color:#fff;box-shadow:inset 0 0 0 1px rgba(99,102,241,.3)}
+  .conv .dot{width:6px;height:6px;border-radius:50%;background:var(--txt-3);flex:0 0 auto}
+  .conv.active .dot{background:var(--brand-2);box-shadow:0 0 8px rgba(34,211,238,.8)}
+  .conv .meta{min-width:0;flex:1}
+  .conv .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+  .conv .p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--txt-3);margin-top:2px}
+  .conv .ops{display:flex;gap:2px;opacity:0;transition:opacity .16s}
+  .conv:hover .ops{opacity:1}
+  .icon-btn{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--txt-3)}
+  .icon-btn:hover{background:rgba(255,255,255,.08);color:var(--txt)}
+  .icon-btn svg{width:14px;height:14px}
+  .side-foot{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+  .foot-row{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--txt-3);padding:0 6px}
+  .pill{padding:3px 8px;border-radius:999px;background:rgba(52,211,153,.12);color:#7ee7c0;font-size:10.5px;font-weight:600;
+    box-shadow:inset 0 0 0 1px rgba(52,211,153,.22)}
+  .ghost{padding:7px 9px;border-radius:9px;font-size:12.5px;color:var(--txt-2);display:flex;align-items:center;gap:8px;width:100%;text-align:left}
+  .ghost:hover{background:rgba(255,255,255,.05);color:var(--txt)}
+  .ghost svg{width:14px;height:14px;color:var(--txt-3)}
+
+  /* ---------- main ---------- */
+  .main{display:flex;flex-direction:column;min-width:0;background:radial-gradient(1200px 600px at 70% -10%,rgba(30,41,64,.6),transparent)}
+  .top{
+    display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);
+    background:rgba(7,10,18,.6);backdrop-filter:blur(12px);
+  }
+  .burger{display:none}
+  .top .title{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}
+  .sel{position:relative}
+  .sel select{
+    appearance:none;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--txt-2);
+    font-size:12px;padding:6px 26px 6px 10px;border-radius:9px;outline:none;cursor:pointer;
+  }
+  .sel::after{content:"";position:absolute;right:9px;top:45%;width:7px;height:7px;border-right:1.6px solid var(--txt-3);
+    border-bottom:1.6px solid var(--txt-3);transform:translateY(-50%) rotate(45deg);pointer-events:none}
+  .spacer{flex:1}
+  .status{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--txt-3)}
+  .pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:pulse 2.2s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}50%{box-shadow:0 0 0 6px rgba(52,211,153,0)}}
+  .btn-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--txt-2);border:1px solid var(--line)}
+  .btn-icon:hover{background:rgba(255,255,255,.06);color:#fff}
+  .btn-icon svg{width:16px;height:16px}
+
+  .thread{flex:1;overflow-y:auto;padding:22px 0 8px;scroll-behavior:smooth}
+  .wrap{max-width:840px;margin:0 auto;padding:0 22px;display:flex;flex-direction:column;gap:18px}
+
+  /* empty state */
+  .hero{max-width:640px;margin:6vh auto 0;text-align:center;padding:0 20px}
+  .hero .mark{width:60px;height:60px;border-radius:18px;background:var(--grad);display:grid;place-items:center;margin:0 auto 18px;
+    box-shadow:0 16px 40px rgba(99,102,241,.4)}
+  .hero .mark svg{width:30px;height:30px}
+  .hero h2{font-size:26px;margin:0 0 8px;letter-spacing:-.3px}
+  .hero p{color:var(--txt-2);font-size:14px;line-height:1.6;margin:0 auto 22px;max-width:460px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;text-align:left}
+  .card{
+    padding:13px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid var(--line);
+    transition:transform .14s ease,border-color .2s,background .2s;cursor:pointer;
+  }
+  .card:hover{transform:translateY(-2px);border-color:rgba(99,102,241,.45);background:rgba(99,102,241,.07)}
+  .card .k{font-size:12.5px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:7px}
+  .card .k span{font-size:14px}
+  .card .d{font-size:11.5px;color:var(--txt-3);line-height:1.5}
+
+  /* messages */
+  .msg{display:flex;gap:12px;animation:rise .3s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .av{width:32px;height:32px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
+  .av.u{background:linear-gradient(135deg,#334155,#475569)}
+  .av.a{background:var(--grad);box-shadow:0 4px 14px rgba(99,102,241,.35)}
+  .body{min-width:0;flex:1}
+  .who{font-size:12px;color:var(--txt-3);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .who b{color:var(--txt-2);font-weight:600;font-size:12.5px}
+  .bubble{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;
+    font-size:14px;line-height:1.68;word-wrap:break-word;overflow-wrap:anywhere;box-shadow:0 4px 18px rgba(0,0,0,.25);
+  }
+  .msg.user .bubble{background:linear-gradient(135deg,rgba(99,102,241,.16),rgba(34,211,238,.08));border-color:rgba(99,102,241,.28)}
+  .bubble p{margin:0 0 9px}
+  .bubble p:last-child{margin:0}
+  .bubble h3,.bubble h4{margin:14px 0 7px;font-size:14.5px}
+  .bubble ul,.bubble ol{margin:6px 0 10px;padding-left:20px}
+  .bubble li{margin:3px 0}
+  .bubble a{color:var(--brand-2);text-decoration:none;border-bottom:1px solid rgba(34,211,238,.35)}
+  .bubble strong{color:#fff}
+  .bubble code{font-family:var(--mono);font-size:12.5px;background:rgba(255,255,255,.08);padding:1.5px 5px;border-radius:5px}
+  .bubble blockquote{margin:8px 0;padding:8px 12px;border-left:2px solid var(--brand);background:rgba(99,102,241,.07);border-radius:0 8px 8px 0;color:var(--txt-2)}
+  .cb{position:relative;margin:10px 0;border-radius:11px;overflow:hidden;border:1px solid var(--line-2);background:#0a0e18}
+  .cb .bar{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(255,255,255,.04);
+    border-bottom:1px solid var(--line);font-size:11px;color:var(--txt-3);font-family:var(--mono)}
+  .cb pre{margin:0;padding:12px 13px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#d7e2f4}
+  .cb .cp{font-size:10.5px;color:var(--txt-2);padding:2px 7px;border-radius:6px;border:1px solid var(--line)}
+  .cb .cp:hover{background:rgba(255,255,255,.08);color:#fff}
+  .caret::after{content:"";display:inline-block;width:7px;height:15px;margin-left:3px;background:var(--brand-2);
+    vertical-align:-2px;animation:blink .9s steps(2) infinite;border-radius:1px}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  .acts{display:flex;align-items:center;gap:4px;margin-top:8px;opacity:0;transition:opacity .18s}
+  .msg:hover .acts{opacity:1}
+  .acts button{font-size:11px;color:var(--txt-3);padding:4px 8px;border-radius:7px;display:flex;align-items:center;gap:5px}
+  .acts button:hover{background:rgba(255,255,255,.07);color:var(--txt)}
+  .acts svg{width:12px;height:12px}
+  .tip{font-size:11px;color:var(--txt-3);margin-left:auto}
+  .thinking{display:flex;align-items:center;gap:10px;color:var(--txt-3);font-size:13px}
+  .dots{display:flex;gap:4px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:var(--brand);animation:bo 1.2s infinite}
+  .dots i:nth-child(2){animation-delay:.16s;background:#8b5cf6}
+  .dots i:nth-child(3){animation-delay:.32s;background:var(--brand-2)}
+  @keyframes bo{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-5px);opacity:1}}
+
+  /* composer */
+  .dock{padding:10px 22px 18px;background:linear-gradient(180deg,transparent,rgba(7,10,18,.85) 40%)}
+  .dock-in{max-width:840px;margin:0 auto}
+  .chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:9px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{white-space:nowrap;font-size:11.5px;color:var(--txt-2);padding:6px 11px;border-radius:999px;
+    background:rgba(255,255,255,.04);border:1px solid var(--line);transition:.16s}
+  .chip:hover{background:rgba(99,102,241,.14);border-color:rgba(99,102,241,.4);color:#fff}
+  .input{
+    display:flex;align-items:flex-end;gap:10px;padding:9px 10px 9px 14px;border-radius:16px;
+    background:rgba(17,23,37,.9);border:1px solid var(--line-2);transition:border-color .2s,box-shadow .2s;
+  }
+  .input.focus{border-color:rgba(99,102,241,.75);box-shadow:0 0 0 4px rgba(99,102,241,.12)}
+  textarea{
+    flex:1;resize:none;border:0;background:transparent;outline:none;font-size:14px;line-height:1.55;
+    max-height:170px;padding:6px 0;
+  }
+  textarea::placeholder{color:var(--txt-3)}
+  .send{width:38px;height:38px;border-radius:11px;background:var(--grad);display:grid;place-items:center;
+    box-shadow:0 8px 20px rgba(99,102,241,.4);transition:.16s;flex:0 0 auto}
+  .send:hover{filter:brightness(1.1)}
+  .send:disabled{opacity:.4;box-shadow:none;cursor:not-allowed}
+  .send svg{width:17px;height:17px;color:#fff}
+  .stop{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:rgba(248,113,113,.16);
+    border:1px solid rgba(248,113,113,.4);color:#fca5a5;flex:0 0 auto}
+  .stop svg{width:15px;height:15px}
+  .hint{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--txt-3);padding:8px 4px 0}
+  kbd{font-family:var(--mono);font-size:10px;background:rgba(255,255,255,.07);border:1px solid var(--line);
+    border-radius:5px;padding:1.5px 5px;color:var(--txt-2)}
+  .cnt{margin-left:auto;font-variant-numeric:tabular-nums}
+
+  /* in-app dialog (replaces native prompt/confirm) */
+  .dlg{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(4,6,12,.62);backdrop-filter:blur(3px);animation:rise .16s ease both}
+  .dlg[hidden]{display:none}
+  .dlg-card{width:min(92vw,380px);padding:16px;border-radius:15px;background:rgba(21,29,46,.98);
+    border:1px solid var(--line-2);box-shadow:var(--shadow)}
+  .dlg-t{font-size:13.5px;font-weight:600;margin-bottom:11px}
+  .dlg-i{width:100%;padding:9px 11px;border-radius:10px;background:rgba(255,255,255,.05);
+    border:1px solid var(--line-2);font-size:13.5px;outline:none;margin-bottom:13px}
+  .dlg-i:focus{border-color:rgba(99,102,241,.75)}
+  .dlg-a{display:flex;gap:8px;justify-content:flex-end}
+  .dlg-a button{padding:8px 14px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--txt-2);
+    background:rgba(255,255,255,.06);border:1px solid var(--line)}
+  .dlg-a button:hover{background:rgba(255,255,255,.1);color:#fff}
+  .dlg-a button.p{background:var(--grad);color:#fff;border-color:transparent}
+  .dlg-a button.d{background:rgba(248,113,113,.14);color:#fca5a5;border-color:rgba(248,113,113,.3)}
+
+  /* toast + menu */
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+    background:rgba(17,23,37,.96);border:1px solid var(--line-2);color:var(--txt);font-size:12.5px;
+    padding:9px 15px;border-radius:11px;box-shadow:var(--shadow);transition:.24s;z-index:40;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .menu-wrap{position:relative}
+  .menu{position:absolute;right:0;top:44px;z-index:30;min-width:196px;padding:6px;border-radius:12px;
+    background:rgba(21,29,46,.98);border:1px solid var(--line-2);box-shadow:var(--shadow);display:none}
+  .menu.open{display:block;animation:rise .16s ease both}
+  .menu button{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border-radius:8px;font-size:13px;color:var(--txt-2);text-align:left}
+  .menu button:hover{background:rgba(255,255,255,.07);color:#fff}
+  .menu button.danger:hover{background:rgba(248,113,113,.14);color:#fca5a5}
+  .menu svg{width:14px;height:14px;color:var(--txt-3)}
+  .menu hr{border:0;border-top:1px solid var(--line);margin:5px 8px}
+  .back{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:none}
+  .back.open{display:block}
+
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr}
+    .side{position:fixed;left:0;top:0;bottom:0;width:274px;z-index:25;transform:translateX(-102%);transition:transform .24s ease}
+    .side.open{transform:none;box-shadow:var(--shadow)}
+    .burger{display:grid}
+    .top .title{max-width:38%}
+    .wrap{padding:0 16px}
+    .dock{padding:8px 14px 14px}
+  }
+  @media (max-width:560px){
+    .status,.hint .h-key{display:none}
+    .hero h2{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side" id="side">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 19V6l14 13V6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>Nova Chat</h1>
+        <div class="sub">on-device assistant</div>
+      </div>
+    </div>
+
+    <button class="btn-new" id="newChat">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      New chat
+    </button>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="search" placeholder="Search chats" autocomplete="off" />
+    </div>
+
+    <div class="convs" id="convs"></div>
+
+    <div class="side-foot">
+      <div class="foot-row">
+        <span id="statChats">0 chats</span>
+        <span class="pill">Local only</span>
+      </div>
+      <button class="ghost" id="memoryBtn">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3a5 5 0 0 1 5 5c0 1.6.4 2.4 1 3.2.7.9 1 1.6 1 2.6a4 4 0 0 1-4 4h-1a3.5 3.5 0 0 1-3.5 3.4A3.5 3.5 0 0 1 7 18.4H6a4 4 0 0 1-4-4c0-1 .3-1.7 1-2.6.6-.8 1-1.6 1-3.2a5 5 0 0 1 5-5Z" stroke="currentColor" stroke-width="1.7"/></svg>
+        Memory &amp; settings
+      </button>
+      <button class="ghost" id="shortcutsBtn">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="6" width="19" height="12" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M6.5 10h1M9.5 10h1M12.5 10h1M15.5 10h2M6.5 13.5h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        Shortcuts
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <div class="top">
+      <button class="btn-icon burger" id="burger" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="title" id="chatTitle">New chat</div>
+      <div class="sel">
+        <select id="persona" aria-label="Assistant personality">
+          <option value="nova">Nova · balanced</option>
+          <option value="analyst">Analyst · structured</option>
+          <option value="bard">Bard · playful</option>
+          <option value="coach">Coach · direct</option>
+        </select>
+      </div>
+      <div class="spacer"></div>
+      <div class="status"><span class="pulse"></span><span id="statusTxt">ready</span></div>
+      <div class="menu-wrap">
+        <button class="btn-icon" id="menuBtn" aria-label="Chat options" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/></svg>
+        </button>
+        <div class="menu" id="menu" role="menu">
+          <button data-act="rename"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Rename chat</button>
+          <button data-act="export"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Export as Markdown</button>
+          <button data-act="json"><svg viewBox="0 0 24 24" fill="none"><path d="M9 7H7a3 3 0 0 0 0 6 3 3 0 0 1 0 6h2m6-12h2a3 3 0 0 1 0 6 3 3 0 0 0 0 6h-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Export as JSON</button>
+          <hr/>
+          <button data-act="clear" class="danger"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7h14M10 7V5h4v2m-7 0 1 12h8l1-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Clear messages</button>
+          <button data-act="delete" class="danger"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>Delete chat</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="thread" id="thread"><div class="wrap" id="wrap"></div></div>
+
+    <div class="dock">
+      <div class="dock-in">
+        <div class="chips" id="chips"></div>
+        <div class="input" id="inputBox">
+          <textarea id="text" rows="1" placeholder="Ask anything — or try “12% of 340”, “summarize: …”, “10 km in miles”…"></textarea>
+          <button class="stop" id="stop" hidden>
+            <svg viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>
+          </button>
+          <button class="send" id="send" disabled aria-label="Send">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5m0 0-6 6m6-6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="hint">
+          <span class="h-key"><kbd>Enter</kbd> send</span>
+          <span class="h-key"><kbd>Shift</kbd>+<kbd>Enter</kbd> new line</span>
+          <span class="h-key"><kbd>Ctrl</kbd>+<kbd>K</kbd> new chat</span>
+          <span class="cnt" id="cnt"></span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="dlg" id="dlg" hidden>
+  <div class="dlg-card">
+    <div class="dlg-t" id="dlgT"></div>
+    <input class="dlg-i" id="dlgI" autocomplete="off" spellcheck="false" />
+    <div class="dlg-a">
+      <button id="dlgNo">Cancel</button>
+      <button class="p" id="dlgYes">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="back" id="back"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   Nova Chat — single-file smart chat app
+   The "brain" is a deterministic on-device engine: intent
+   detection over ~18 capabilities + personality-aware
+   fallback. Nothing leaves the browser; state lives in
+   localStorage.
+   ========================================================= */
+(function(){
+"use strict";
+
+var LS = { chats:"nova.chats.v1", active:"nova.active.v1", persona:"nova.persona.v1", memory:"nova.memory.v1" };
+
+/* ---------------- state ---------------- */
+var state = {
+  chats: [],           // {id,title,persona,messages:[{role,content,ts}]}
+  activeId: null,
+  persona: "nova",
+  memory: {},          // free-form facts the user asks it to keep
+  streaming: false,
+  cancel: false
+};
+
+function load(){
+  try{ state.chats = JSON.parse(localStorage.getItem(LS.chats)||"[]"); }catch(e){ state.chats = []; }
+  state.activeId = localStorage.getItem(LS.active)||null;
+  state.persona = localStorage.getItem(LS.persona)||"nova";
+  try{ state.memory = JSON.parse(localStorage.getItem(LS.memory)||"{}"); }catch(e){ state.memory = {}; }
+  if(!state.chats.some(function(c){return c.id===state.activeId})) state.activeId = state.chats.length?state.chats[0].id:null;
+}
+function persist(){
+  try{
+    localStorage.setItem(LS.chats, JSON.stringify(state.chats));
+    localStorage.setItem(LS.active, state.activeId||"");
+    localStorage.setItem(LS.persona, state.persona);
+    localStorage.setItem(LS.memory, JSON.stringify(state.memory));
+  }catch(e){ toast("Storage full — older chats may not save"); }
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function active(){
+  var c = state.chats.filter(function(x){return x.id===state.activeId;})[0];
+  if(!c){ c = { id:uid(), title:"New chat", persona:state.persona, messages:[] }; state.chats.unshift(c); state.activeId=c.id; }
+  return c;
+}
+
+/* ---------------- dom ---------------- */
+var $ = function(id){ return document.getElementById(id); };
+var el = {
+  side:$("side"), convs:$("convs"), search:$("search"), newChat:$("newChat"),
+  thread:$("thread"), wrap:$("wrap"), title:$("chatTitle"), persona:$("persona"),
+  text:$("text"), send:$("send"), stop:$("stop"), chips:$("chips"), inputBox:$("inputBox"),
+  menu:$("menu"), menuBtn:$("menuBtn"), toast:$("toast"), back:$("back"),
+  status:$("statusTxt"), cnt:$("cnt"), statChats:$("statChats"),
+  memoryBtn:$("memoryBtn"), shortcutsBtn:$("shortcutsBtn")
+};
+
+/* ---------------- markdown (small, safe) ---------------- */
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function inline(s){
+  var codes=[];
+  // park code spans first, so * and _ inside them can't be mistaken for emphasis
+  s = s.replace(/`([^`]+)`/g, function(_,c){ codes.push(c); return "@@C"+(codes.length-1)+"@@"; });
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[\s(])\*([^*\n]+)\*(?![\w])/g, "$1<em>$2</em>");
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  s = s.replace(/@@C(\d+)@@/g, function(_,i){ return "<code>"+codes[+i]+"</code>"; });
+  return s;
+}
+function md(src){
+  var lines = String(src).split("\n"), out = [], i = 0;
+  function flushPara(buf){ if(buf.length) out.push("<p>"+inline(buf.join("<br>"))+"</p>"); }
+  for(var para=[]; i<lines.length; i++){
+    var ln = lines[i];
+    var fence = ln.match(/^```(\w*)\s*$/);
+    if(fence){
+      flushPara(para); para = [];
+      var lang = fence[1]||"text", code = [];
+      i++;
+      while(i<lines.length && !/^```\s*$/.test(lines[i])){ code.push(lines[i]); i++; }
+      out.push('<div class="cb"><div class="bar"><span>'+esc(lang)+'</span>'+
+        '<button class="cp" data-copy="'+esc(code.join("\n"))+'">copy</button></div>'+
+        '<pre><code>'+esc(code.join("\n"))+'</code></pre></div>');
+      continue;
+    }
+    var h = ln.match(/^(#{2,4})\s+(.*)$/);
+    if(h){ flushPara(para); para=[]; out.push("<h"+(h[1].length+1)+">"+inline(esc(h[2]))+"</h"+(h[1].length+1)+">"); continue; }
+    if(/^\s*[-•]\s+/.test(ln)){
+      flushPara(para); para=[];
+      var items=[];
+      while(i<lines.length && /^\s*[-•]\s+/.test(lines[i])){ items.push(lines[i].replace(/^\s*[-•]\s+/,"")); i++; }
+      i--;
+      out.push("<ul>"+items.map(function(t){return "<li>"+inline(esc(t))+"</li>";}).join("")+"</ul>");
+      continue;
+    }
+    if(/^\s*\d+[.)]\s+/.test(ln)){
+      flushPara(para); para=[];
+      var oitems=[];
+      while(i<lines.length && /^\s*\d+[.)]\s+/.test(lines[i])){ oitems.push(lines[i].replace(/^\s*\d+[.)]\s+/,"")); i++; }
+      i--;
+      out.push("<ol>"+oitems.map(function(t){return "<li>"+inline(esc(t))+"</li>";}).join("")+"</ol>");
+      continue;
+    }
+    if(/^>\s?/.test(ln)){ flushPara(para); para=[]; out.push("<blockquote>"+inline(esc(ln.replace(/^>\s?/,"")))+"</blockquote>"); continue; }
+    if(/^\s*$/.test(ln)){ flushPara(para); para=[]; continue; }
+    para.push(esc(ln));
+  }
+  flushPara(para);
+  return out.join("");
+}
+
+/* ---------------- persona / fallback brain ---------------- */
+var PERSONAS = {
+  nova:   { name:"Nova",   opener:["Here's how I'd frame it:","Straight to it:"],
+            closer:"Want me to go a level deeper on any of that?" },
+  analyst:{ name:"Analyst", opener:["**Reading the inputs.**","**Decomposing first.**"],
+            closer:"Say the word if you want this as a table or a checklist." },
+  bard:   { name:"Bard",   opener:["Ooh, a good one.","*cracks knuckles*","Right then —"],
+            closer:"Shall I spin that into something shorter and punchier?" },
+  coach:  { name:"Coach",  opener:["No fluff:","Here's the move —"],
+            closer:"Pick one thing from that and do it in the next 20 minutes." }
+};
+var OPENERS = {
+  question:["Good question.","Let me take that apart.","Here's how I'd think about it."],
+  help:["Happy to help.","Sure.","Of course."],
+  unknown:["I'm not wired for that one yet.","That's outside my little rulebook.","Hmm, not a pattern I know."]
+};
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function titleCase(s){ return s.replace(/\b\w/g,function(c){return c.toUpperCase();}); }
+function topicOf(q){
+  var t = q.replace(/^(what|who|why|how|when|where|is|are|can|do|should|tell me|explain|define)\s+/i,"")
+           .replace(/[?.!]+$/,"").trim();
+  return t.length>60 ? t.slice(0,60)+"…" : t;
+}
+
+var FALLBACKS = [
+  "I ran **“{topic}”** through my local rulebook and came up empty — I'm a deterministic demo brain, so I only answer what I have routines for.\n\nTry one of these instead:\n- `12% of 340` or `(7+12)*3`\n- `10 km in miles`\n- `summarize: <paste text>`\n- `translate hello to spanish`\n- `write a regex for email`\n- `remember my favorite language is Rust`",
+  "Nothing in my on-device playbook matches **“{topic}”**.\n\nI'm strongest at quick maths, conversions, text tools, tiny code recipes and structured prompts. Say **help** for the full list.",
+  "I don't have a routine for **“{topic}”** — but I'm good with:\n- calculations & unit conversions\n- summarizing / rewriting pasted text\n- code snippets and regex\n- plans, checklists and idea lists\n\nGive me one of those and I'll stream it out."
+];
+
+/* ---------------- capability handlers ---------------- */
+var MFUN = {
+  sqrt:Math.sqrt, cbrt:function(x){return Math.pow(x,1/3);}, abs:Math.abs,
+  sin:Math.sin, cos:Math.cos, tan:Math.tan, asin:Math.asin, acos:Math.acos, atan:Math.atan,
+  ln:Math.log, log:Math.log10, log2:Math.log2, exp:Math.exp,
+  round:Math.round, floor:Math.floor, ceil:Math.ceil, neg:function(x){return -x;}
+};
+var MCONST = { pi:Math.PI, tau:2*Math.PI, e:Math.E };
+function tokenizeMath(src){
+  var s=String(src).toLowerCase(), toks=[], i=0;
+  while(i<s.length){
+    var c=s[i];
+    if(/\s/.test(c)){ i++; continue; }
+    if(/[0-9.]/.test(c)){
+      var j=i; while(j<s.length && /[0-9._]/.test(s[j])) j++;
+      var num=s.slice(i,j).replace(/_/g,"");
+      if(!/^(\d+(\.\d*)?|\.\d+)$/.test(num)) return {err:"“"+num+"” isn't a number I understand"};
+      toks.push({t:"n",v:parseFloat(num)}); i=j; continue;
+    }
+    if(/[a-z]/.test(c)){
+      var k=i; while(k<s.length && /[a-z]/.test(s[k])) k++;
+      var w=s.slice(i,k); i=k;
+      if(MFUN[w]) toks.push({t:"f",n:w});
+      else if(MCONST[w]!==undefined) toks.push({t:"n",v:MCONST[w]});
+      else return {err:"I don't have “"+w+"” — supported functions are sqrt, cbrt, abs, sin, cos, tan, ln, log, log2, exp, round, floor, ceil, plus the constants pi and e"};
+      continue;
+    }
+    if("+-*/%^".indexOf(c)>=0){ toks.push({t:"o",v:c}); i++; continue; }
+    if(c==="("){ toks.push({t:"("}); i++; continue; }
+    if(c===")"){ toks.push({t:")"}); i++; continue; }
+    if(c===","||c==="="||c==="?"||c==="!"){ i++; continue; }
+    return {err:"unexpected character “"+c+"”"};
+  }
+  if(!toks.length) return {err:"nothing to evaluate"};
+  return {toks:toks};
+}
+var MPREC = {"+":2,"-":2,"*":3,"/":3,"%":3,"neg":3.5,"^":4};
+function safeMath(expr){
+  var tk = tokenizeMath(expr);
+  if(tk.err) return tk;
+  var toks = tk.toks, out=[], ops=[], prev=null, i;
+  function isValue(p){ return !!p && (p.t==="n" || p.t===")"); }
+  for(i=0;i<toks.length;i++){
+    var x=toks[i];
+    if(isValue(prev) && (x.t==="n" || x.t==="(" || x.t==="f")) ops.push({t:"o",v:"*"});  // 2pi, 3(4), 2sqrt(9)
+    if(x.t==="n"){ out.push(x); prev=x; continue; }
+    if(x.t==="f"){ ops.push(x); prev=x; continue; }
+    if(x.t==="("){ ops.push(x); prev=x; continue; }
+    if(x.t===")"){
+      var found=false;
+      while(ops.length){
+        var top=ops[ops.length-1];
+        if(top.t==="("){ ops.pop(); found=true; break; }
+        out.push(ops.pop());
+      }
+      if(!found) return {err:"unbalanced parentheses"};
+      if(ops.length && ops[ops.length-1].t==="f") out.push(ops.pop());
+      prev={t:")"}; continue;
+    }
+    if(x.t==="o"){
+      var unary = !prev || prev.t==="o" || prev.t==="(" || prev.t==="f";
+      if(unary){
+        if(x.v==="+"){ prev=x; continue; }
+        if(x.v==="-"){ var nz={t:"o",v:"neg"}; ops.push(nz); prev=nz; continue; }
+        return {err:"“"+x.v+"” has no number before it"};
+      }
+      while(ops.length){
+        var o=ops[ops.length-1];
+        if(o.t==="f"){ out.push(ops.pop()); continue; }
+        if(o.t==="(") break;
+        var po=MPREC[o.v], px=MPREC[x.v];
+        var rightAssoc = (x.v==="^" || x.v==="neg");
+        if(po>px || (po===px && !rightAssoc)) out.push(ops.pop()); else break;
+      }
+      ops.push(x); prev=x; continue;
+    }
+  }
+  while(ops.length){
+    var r=ops.pop();
+    if(r.t==="(" || r.t===")") return {err:"unbalanced parentheses"};
+    out.push(r);
+  }
+  var st=[];
+  for(i=0;i<out.length;i++){
+    var it=out[i];
+    if(it.t==="n"){ st.push(it.v); continue; }
+    if(it.t==="f"){
+      var a=st.pop(); if(a===undefined) return {err:"missing value"};
+      st.push(MFUN[it.n](a)); continue;
+    }
+    if(it.v==="neg"){
+      var az=st.pop(); if(az===undefined) return {err:"missing value"};
+      st.push(-az); continue;
+    }
+    var b=st.pop(), aa=st.pop();
+    if(aa===undefined||b===undefined) return {err:"incomplete expression"};
+    if(it.v==="/"&&b===0) return {err:"division by zero"};
+    st.push(it.v==="+"?aa+b:it.v==="-"?aa-b:it.v==="*"?aa*b:it.v==="/"?aa/b:it.v==="%"?aa%b:Math.pow(aa,b));
+  }
+  if(st.length!==1) return {err:"incomplete expression"};
+  if(!isFinite(st[0])) return {err:"that result isn't a finite number"};
+  return {value:st[0]};
+}
+function fmt(n){
+  if(!isFinite(n)) return "∞";
+  var r = Math.abs(n-Math.round(n))<1e-9 ? Math.round(n) : Number(n.toFixed(6));
+  return Number(r).toLocaleString("en-US",{maximumFractionDigits:6});
+}
+
+var UNITS = {
+  length:{ m:1, mm:.001, cm:.01, km:1000, in:.0254, ft:.3048, yd:.9144, mi:1609.344, nmi:1852 },
+  mass:{ g:1, kg:1000, mg:.001, t:1e6, oz:28.349523, lb:453.59237, st:6350.29 },
+  volume:{ l:1, ml:.001, cl:.01, dl:.1, kl:1000, m3:1000, gal:3.785412, qt:.946353, pt:.473176, cup:.236588, floz:.029574, in3:.016387, ft3:28.316846 },
+  area:{ m2:1, cm2:.0001, km2:1e6, ha:1e4, acre:4046.8564, ft2:.092903, in2:.00064516, yd2:.8361274, mi2:2589988.1 },
+  speed:{ ms:1, kmh:.277778, mph:.44704, kn:.514444, fts:.3048 },
+  time:{ s:1, ms:.001, min:60, hr:3600, day:86400, wk:604800 },
+  data:{ b:1, kb:1024, mb:1048576, gb:1073741824, tb:1099511627776, pb:1.1259e15 },
+  temp:{ c:"c", f:"f", k:"k" }
+};
+var UNIT_ALIAS = {
+  metres:"m",meter:"m",meters:"m",kilometres:"km",kilometers:"km",kilometre:"km",miles:"mi",mile:"mi",
+  feet:"ft",foot:"ft",inches:"in",inch:"in",yards:"yd",kilos:"kg",kg:"kg",kgs:"kg",kilogram:"kg",kilograms:"kg",
+  grams:"g",pounds:"lb",pound:"lb",oz:"oz",ounces:"oz",tonnes:"t",tonne:"t",litres:"l",liters:"l",liter:"l",
+  gallons:"gal",gallon:"gal",cups:"cup",hours:"hr",hour:"hr",hrs:"hr",minutes:"min",minute:"min",mins:"min",
+  seconds:"s",second:"s",secs:"s",weeks:"wk",week:"wk",days:"day",day:"day",kmh:"kmh",kph:"kmh",mph:"mph",
+  knots:"kn",mb:"mb",megabytes:"mb",megabyte:"mb",gb:"gb",gigabytes:"gb",tb:"tb",terabyte:"tb",kb:"kb",
+  kilobytes:"kb",bits:"b",bytes:"b",c:"c",f:"f",k:"k",celsius:"c",centigrade:"c",fahrenheit:"f",kelvin:"k",
+  m2:"m2",sqm:"m2","sq m":"m2",ft2:"ft2",sqft:"ft2",ha:"ha",hectare:"ha",hectares:"ha",acre:"acre",acres:"acre",
+  cm:"cm",mm:"mm",km:"km",mi:"mi",yd:"yd",ft:"ft",in:"in",g:"g",mg:"mg",t:"t",l:"l",ml:"ml",gal:"gal",s:"s",ms:"ms",min:"min",hr:"hr",day:"day",wk:"wk",kb:"kb",mb:"mb",gb:"gb",tb:"tb"
+};
+function normUnit(u){
+  u = u.toLowerCase().replace(/[^a-z0-9 ]/g,"").trim();
+  u = u.replace(/\b(sq)\s+(m|ft|yd|mi|in|km|cm)\b/g,"$2$3?".replace("?","2"));
+  if(UNIT_ALIAS[u]) return UNIT_ALIAS[u];
+  if(/^\d/.test(u)) return u;
+  return u;
+}
+function dimOf(u){
+  for(var d in UNITS) if(UNITS[d][u]!==undefined) return d;
+  return null;
+}
+function convert(q){
+  var m = q.match(/(-?\d+(?:\.\d+)?)\s*([a-z°µ\/\s]+?)\s+(?:in|into|to|as|equals|=)\s+([a-z°µ\/\s]+?)\s*[?.!]*$/i);
+  if(!m) return null;
+  var amt=parseFloat(m[1]), a=normUnit(m[2]), b=normUnit(m[3]);
+  if(a==="°c"||a==="°f") a=a.slice(1); if(b==="°c"||b==="°f") b=b.slice(1);
+  var da=dimOf(a), db=dimOf(b);
+  if(!da||!db) return null;
+  if(da!==db && !(da==="temp"&&db==="temp")) return "⚠️ `"+m[2].trim()+"` and `"+m[3].trim()+"` aren't the same kind of unit, so I won't guess.";
+  if(da==="temp"){
+    var celsius = a==="c"?amt : a==="f"?(amt-32)*5/9 : amt-273.15;
+    var res = b==="c"?celsius : b==="f"?celsius*9/5+32 : celsius+273.15;
+    var r2=function(x){return Number(x.toFixed(2));};
+    return "**"+amt+"°"+a.toUpperCase()+" = "+r2(res)+"°"+b.toUpperCase()+"**\n\n"+
+      "- in Celsius: "+r2(celsius)+"°C\n- in Kelvin: "+r2(celsius+273.15)+" K\n\n*Formula: F = C × 9/5 + 32*";
+  }
+  var base = amt*UNITS[da][a], val = base/UNITS[da][b];
+  var BASESYM = { length:"m", mass:"g", volume:"l", area:"m²", speed:"m/s", time:"s", data:"bytes" };
+  return "**"+fmt(amt)+" "+m[2].trim()+" = "+fmt(val)+" "+m[3].trim()+"**\n\n"+
+    "- in base units: "+fmt(base)+" "+(BASESYM[da]||da)+"\n"+
+    "- factor: 1 "+m[2].trim()+" = "+fmt(UNITS[da][a]/UNITS[da][b])+" "+m[3].trim()+
+    "\n\n*Rounded to 6 decimals; exact factor is "+ (UNITS[da][a]/UNITS[da][b]).toPrecision(6) +" ×*";
+}
+
+var PHRASES = {
+  spanish:{
+    hello:"Hola", hi:"Hola", "good morning":"Buenos días", "good night":"Buenas noches",
+    "thank you":"Gracias", thanks:"Gracias", please:"Por favor", "how are you":"¿Cómo estás?",
+    "my name is":"Me llamo", "i love you":"Te quiero", friend:"amigo", water:"agua",
+    coffee:"café", house:"casa", "goodbye":"Adiós", dog:"perro", cat:"gato", "one":"uno",
+    "two":"dos", "three":"tres", "yes":"sí", "no":"no", "see you later":"Hasta luego",
+    "where is the bathroom":"¿Dónde está el baño?", "i don't understand":"No entiendo", book:"libro"
+  },
+  french:{
+    hello:"Bonjour", hi:"Salut", "good morning":"Bonjour", "thank you":"Merci", please:"S'il vous plaît",
+    "how are you":"Comment ça va ?", "i love you":"Je t'aime", goodbye:"Au revoir", water:"Eau",
+    coffee:"Café", friend:"ami", dog:"chien", cat:"chat", "one":"un", "two":"deux", "three":"trois",
+    yes:"Oui", no:"Non", house:"maison", book:"livre", "my name is":"Je m'appelle"
+  },
+  german:{
+    hello:"Hallo", hi:"Hi", "good morning":"Guten Morgen", "thank you":"Danke", please:"Bitte",
+    "how are you":"Wie geht's?", "i love you":"Ich liebe dich", goodbye:"Tschüss", water:"Wasser",
+    coffee:"Kaffee", friend:"Freund", dog:"Hund", cat:"Katze", "one":"eins", "two":"zwei",
+    "three":"drei", yes:"Ja", no:"Nein", house:"Haus", book:"Buch"
+  },
+  japanese:{
+    hello:"こんにちは", hi:"やあ", "good morning":"おはよう", "thank you":"ありがとう", please:"お願いします",
+    "how are you":"元気？", "i love you":"愛してる", goodbye:"さようなら", water:"水", coffee:"コーヒー",
+    friend:"友達", dog:"犬", cat:"猫", "one":"一", "two":"二", "three":"三", yes:"はい", no:"いいえ",
+    house:"家", book:"本", "my name is":"私の名前は"
+  },
+  italian:{
+    hello:"Ciao", hi:"Ciao", "good morning":"Buongiorno", "thank you":"Grazie", please:"Per favore",
+    "how are you":"Come stai?", "i love you":"Ti amo", goodbye:"Arrivederci", water:"Acqua",
+    coffee:"Caffè", friend:"amico", dog:"cane", cat:"gatto", "one":"uno", "two":"due", "three":"tre",
+    yes:"sì", no:"no", house:"casa", book:"libro"
+  },
+  portuguese:{
+    hello:"Olá", hi:"Oi", "good morning":"Bom dia", "thank you":"Obrigado", please:"Por favor",
+    "how are you":"Como vai?", "i love you":"Eu te amo", goodbye:"Adeus", water:"Água",
+    coffee:"Café", friend:"amigo", dog:"cachorro", cat:"gato", "one":"um", "two":"dois", "three":"três",
+    yes:"sim", no:"não", house:"casa", book:"livro"
+  }
+};
+var LANG_ALIAS = {esp:"spanish",es:"spanish",spanish:"spanish",fr:"french",francais:"french",français:"french",
+  french:"french",de:"german",german:"german",deutsch:"german",ja:"japanese",japan:"japanese",japanese:"japanese",
+  it:"italian",italian:"italian",pt:"portuguese",portuguese:"portuguese"};
+
+function translate(q){
+  var m = q.match(/translate\s+(.+?)\s+(?:to|into|in)\s+([a-z]+)\s*[?.!]*$/i) ||
+          q.match(/how do you say\s+(.+?)\s+in\s+([a-z]+)\s*[?.!]*$/i);
+  if(!m) return null;
+  var phrase = m[1].replace(/^["']|["']$/g,"").toLowerCase().trim();
+  var lang = LANG_ALIAS[m[2].toLowerCase()];
+  if(!lang) return "I don't have a dictionary for **“"+m[2]+"”** yet. I cover Spanish, French, German, Japanese, Italian and Portuguese.";
+  var dict = PHRASES[lang];
+  if(dict[phrase]) return "**“"+titleCase(phrase)+"” in "+titleCase(lang)+" → “"+dict[phrase]+"”**\n\n*This is a fixed demo dictionary of "+Object.keys(dict).length+" common phrases — it isn't a real translator, so treat anything beyond greetings and travel words with suspicion.*";
+  var known=[], parts=phrase.split(/\s+/);
+  for(var i=0;i<parts.length;i++){ if(dict[parts[i]]) known.push(parts[i]+" → "+dict[parts[i]]); }
+  if(known.length) return "No exact match for **“"+phrase+"”**. Word-by-word I have:\n- "+known.join("\n- ")+
+    "\n\nSo a rough rendering would be: *"+known.map(function(k){return k.split(" → ")[1];}).join(" ")+"*";
+  return "“"+phrase+"” isn't in my "+lang+" dictionary (only "+Object.keys(dict).length+" phrases in this demo). Try: `hello`, `thank you`, `how are you`, `i love you`, `water`, `friend`.";
+}
+
+var LANGS = ["python","javascript","typescript","html","css","sql","bash","go","rust","java","c","cpp","php","ruby"];
+function snippet(q){
+  var lang=null;
+  LANGS.some(function(L){
+    if(new RegExp("\\b"+L+"\\b","i").test(q)){ lang=L; return true; }
+    return false;
+  });
+  var want = q.toLowerCase();
+  var bank = [];
+  if(/\b(regex|patterns?|matching)\b/.test(want)){
+    bank.push(["regex — email","// paste into any JS file\nconst EMAIL = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/;\nconsole.log(EMAIL.test(\"hi@nova.dev\")); // true"]);
+    bank.push(["regex — password strength","const STRONG = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$/;"]);
+    bank.push(["regex — URL","const URL_RE = /^https?:\\/\\/[\\w.-]+(?:\\:[0-9]{2,5})?(?:\\/\\S*)?$/;"]);
+    return "### Regex recipes\n\n```javascript\n"+bank[0][1]+"\n```\n\nTwo more that cover most cases:\n\n```javascript\n"+bank[1][1]+"\n```\n\n```javascript\n"+bank[2][1]+"\n```\n\n*Want a pattern for something specific? Tell me the shape of the string and I'll build it.*";
+  }
+  if(/\b(debounce|throttle)\b/.test(want)){
+    return "### Debounce (JavaScript)\n\n```javascript\nfunction debounce(fn, wait = 250) {\n  let t;\n  return function (...args) {\n    clearTimeout(t);\n    t = setTimeout(() => fn.apply(this, args), wait);\n  };\n}\n\nconst onSearch = debounce(q => console.log('searching', q), 400);\n```\n\n**Throttle** if you want it to run at most once per interval:\n\n```javascript\nfunction throttle(fn, every = 200) {\n  let last = 0;\n  return (...args) => {\n    const now = Date.now();\n    if (now - last >= every) { last = now; fn(...args); }\n  };\n}\n```";
+  }
+  if(/\b(sort|sorting|sorted|order list)\b/.test(want)){
+    return lang==="python"
+      ? "### Sorting in Python\n\n```python\nusers = [{\"name\": \"zoe\", \"age\": 31}, {\"name\": \"adam\", \"age\": 24}]\n\nby_name = sorted(users, key=lambda u: u[\"name\"])\nby_age  = sorted(users, key=lambda u: u[\"age\"], reverse=True)\n\n# stable, multi-key: age desc then name asc\nboth = sorted(users, key=lambda u: (-u[\"age\"], u[\"name\"]))\n```"
+      : "### Sorting in JavaScript\n\n```javascript\nconst byName = [...items].sort((a, b) => a.name.localeCompare(b.name));\nconst byAge  = [...items].sort((a, b) => b.age - a.age);\n\n// multi-key: age desc, then name asc\nconst both = [...items].sort((a, b) =>\n  b.age - a.age || a.name.localeCompare(b.name)\n);\n```\n\n⚠️ `Array.prototype.sort` mutates — copy first (`[...]`) when the original matters.";
+  }
+  if(/\b(fetch|https?|api|apis|requests?|axios|endpoint|cors)\b/.test(want)){
+    return "### Calling an API (fetch + async)\n\n```javascript\nasync function getJson(url, options = {}) {\n  const res = await fetch(url, {\n    headers: { 'Accept': 'application/json', ...(options.headers || {}) },\n    ...options,\n  });\n  if (!res.ok) throw new Error(res.status + ' ' + res.statusText);\n  return res.json();\n}\n\ntry {\n  const data = await getJson('/api/chats');\n  console.log(data);\n} catch (err) {\n  console.error('request failed:', err.message);\n}\n```\n\n**POST with a body:**\n\n```javascript\nawait fetch('/api/chats', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ title: 'Hello' }),\n});\n```";
+  }
+  if(/\b(csv|files?)\b|read file|write file|open file/.test(want)){
+    return "### Files in Python\n\n```python\nfrom pathlib import Path\n\n# read\nlines = Path(\"notes.txt\").read_text(encoding=\"utf-8\").splitlines()\n\n# write (atomic-ish)\nout = Path(\"out\")\nout.mkdir(parents=True, exist_ok=True)\n(out / \"summary.md\").write_text(\"# Summary\\n\", encoding=\"utf-8\")\n\n# stream a big file\nwith open(\"big.log\", encoding=\"utf-8\") as fh:\n    for line in fh:\n        if \"ERROR\" in line:\n            print(line.strip())\n```\n\n### CSV to list of dicts\n\n```python\nimport csv\nwith open(\"data.csv\", newline=\"\", encoding=\"utf-8\") as fh:\n    rows = list(csv.DictReader(fh))\n```";
+  }
+  if(/\b(hooks?|usestate|usedeffect|react|tsx|jsx)\b/.test(want)){
+    return "### A tidy custom hook (React)\n\n```tsx\nimport { useEffect, useState } from 'react';\n\nexport function useDebounced<T>(value: T, delay = 300): T {\n  const [v, setV] = useState(value);\n  useEffect(() => {\n    const t = setTimeout(() => setV(value), delay);\n    return () => clearTimeout(t);\n  }, [value, delay]);\n  return v;\n}\n\n// usage\nconst query = useDebounced(input, 400);\n```";
+  }
+  if(/\b(loops?|iterate|iteration|foreach)\b/.test(want)){
+    return lang==="python"
+      ? "### Loops (Python)\n\n```python\nfor i, row in enumerate(rows, start=1):\n    print(i, row['name'])\n\nsquares = [n * n for n in range(10) if n % 2 == 0]\n\nwhile not done:\n    done = step()\n```"
+      : "### Loops (JavaScript)\n\n```javascript\nfor (const [i, row] of rows.entries()) console.log(i + 1, row.name);\n\nconst squares = Array.from({ length: 10 }, (_, n) => n * n);\n\nfor (let budget = 100; budget > 0; budget -= cost) spend();\n```";
+  }
+  if(/\b(classes|class|objects?|dataclass|interfaces?|type|types|interface)\b/.test(want)){
+    return lang==="python"
+      ? "### Data model (Python)\n\n```python\nfrom dataclasses import dataclass, field\nfrom datetime import datetime\n\n@dataclass\nclass Chat:\n    title: str\n    messages: list = field(default_factory=list)\n    created: datetime = field(default_factory=datetime.utcnow)\n\n    def add(self, role: str, content: str) -> None:\n        self.messages.append({\"role\": role, \"content\": content, \"ts\": datetime.utcnow()})\n\n    @property\n    def size(self) -> int:\n        return len(self.messages)\n```"
+      : "### Data model (TypeScript)\n\n```typescript\nexport type Role = 'user' | 'assistant';\n\nexport interface Message {\n  role: Role;\n  content: string;\n  ts: number;\n}\n\nexport interface Chat {\n  id: string;\n  title: string;\n  messages: Message[];\n}\n\nexport const lastMessage = (c: Chat): Message | undefined =>\n  c.messages[c.messages.length - 1];\n```";
+  }
+  if(/\b(sql|queries|joins?|select|where|group by)\b/.test(want)){
+    return "### SQL that reads well\n\n```sql\n-- Top 10 conversations by message volume, last 30 days\nSELECT\n  c.id,\n  c.title,\n  COUNT(m.id)          AS messages,\n  MAX(m.created_at)    AS last_activity\nFROM chats c\nJOIN messages m ON m.chat_id = c.id\nWHERE m.created_at >= NOW() - INTERVAL '30 days'\nGROUP BY c.id, c.title\nHAVING COUNT(m.id) > 5\nORDER BY messages DESC\nLIMIT 10;\n```\n\n**Index to add first:** `messages(chat_id, created_at)`.";
+  }
+  if(/\b(docker|compose|containers?|nginx|image)\b/.test(want)){
+    return "### Minimal Dockerfile\n\n```dockerfile\nFROM node:20-alpine AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build\n\nFROM nginx:1.27-alpine\nCOPY --from=build /app/dist /usr/share/nginx/html\nEXPOSE 80\n```";
+  }
+  if(/\b(git|commits?|branches?|rebase|merge)\b/.test(want)){
+    return "### Git rescue kit\n\n```bash\n# undo the last commit, keep the changes\ngit reset --soft HEAD~1\n\n# change the last commit message\ngit commit --amend -m \"new message\"\n\n# save work in progress, then restore it\ngit stash push -m \"wip\"\ngit stash pop\n\n# rebase a feature branch onto main\ngit fetch origin\ngit rebase origin/main\n```\n\n⚠️ Never `--force` a shared branch; use `--force-with-lease`.";
+  }
+  if(/\b(cron|schedules?|crontab)\b/.test(want)){
+    return "### Cron reference\n\n```text\n┌─ minute (0-59)\n│ ┌─ hour (0-23)\n│ │ ┌─ day of month (1-31)\n│ │ │ ┌─ month (1-12)\n│ │ │ │ ┌─ day of week (0-6, Sun=0)\n│ │ │ │ │\n* * * * *  command\n```\n\n```text\n*/5 * * * *    every 5 minutes\n0 9 * * 1-5    09:00 on weekdays\n30 2 * * 0     02:30 on Sunday\n0 0 1 * *      first day of each month\n```";
+  }
+  return null;
+}
+
+var WORDS = {
+  python:"```python\ndef main():\n    print('hello')\n\nif __name__ == '__main__':\n    main()\n```",
+  javascript:"```javascript\nconst main = () => {\n  console.log('hello');\n};\nmain();\n```",
+  html:"```html\n<!DOCTYPE html>\n<html lang=\"en\">\n  <head><meta charset=\"utf-8\"><title>Hi</title></head>\n  <body><h1>hello</h1></body>\n</html>\n```",
+  css:"```css\n.card {\n  padding: 1rem;\n  border-radius: 12px;\n  background: #111725;\n}\n```",
+  rust:"```rust\nfn main() {\n    println!(\"hello\");\n}\n```",
+  go:"```go\npackage main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"hello\")\n}\n```",
+  sql:"```sql\nSELECT title, created_at\nFROM chats\nORDER BY created_at DESC\nLIMIT 10;\n```"
+};
+
+var IDEAS = {
+  "hamburger":["Classic — beef, smoked gouda, pickles, onion, house sauce","Double Smash — two thin patties, crisped edges, American cheese","Chicken &amp; honey — grilled thigh, hot honey, slaw","Black bean — bean patty, avocado, chipotle mayo","Breakfast — sausage, egg, hash brown, cheddar"],
+  "workout":["Mon — full-body strength: squat, press, row (3x8)","Tue — zone-2 cardio, 35 min easy","Wed — hinge day: deadlift, RDL, pull-up negatives","Thu — rest or a long walk","Fri — push day: bench, dips, overhead press","Sat — intervals: 8x400m or 10x60s bike","Sun — mobility + 20 min walk"],
+  "travel":["Day 1 — arrive, easy neighbourhood walk, dinner local","Day 2 — the famous sights, book timed entry ahead","Day 3 — one museum + one market + a long lunch","Day 4 — day trip by train, 60-90 min out","Day 5 — the things you almost skipped: viewpoint, park, bakery","Day 6 — souvenir shopping, one meal you can't get home"],
+  "study":["Session 1 (45 min) — read the material, write questions","Break (10) — stand up, water, no phone","Session 2 (45) — answer those questions from memory","Break (10) — walk","Session 3 (30) — teach it out loud to an empty room","Tomorrow first thing (20) — recall again; that's where it sticks"],
+  "names":["Lumen","Nimbus","Aster","Quill","Vesper","Orbit","Juniper","Kestrel","Halcyon","Tinder (no — that one's taken)","Ember","Fable"],
+  "side project":["A weekend tool that fixes one annoyance you have daily","Turn a spreadsheet you maintain into a tiny app","A newsletter with a strict 500-word limit","Clone a UI you admire, no frameworks allowed","A CLI that renames your downloads folder sanely"],
+  "meal prep":["Base: rice or farro, big batch","Protein: roast chicken thighs + baked tofu","Veg: sheet-pan broccoli, shredded carrot salad","Sauce: chimichurri, peanut, yogurt-herb","Assemble differently each day so you don't hate it"]
+};
+function ideas(q){
+  var w=q.toLowerCase();
+  for(var k in IDEAS){
+    if(hasW(w,k)||w.indexOf(k)>=0&&k.length>8) return "### Ideas for *"+k+"*\n\n"+IDEAS[k].map(function(i){return "- "+i;}).join("\n")+
+      "\n\nWant me to push one of these further? Say **expand idea 2**.";
+  }
+  return null;
+}
+
+function summarize(text){
+  var body = text.replace(/^summarize[:\s-]*/i,"").trim();
+  if(body.length<60) return "Paste something at least a couple of sentences long after `summarize:` and I'll compress it.";
+  var sentences = body.replace(/\s+/g," ").match(/[^.!?]+[.!?]+/g) || [body];
+  var stop=" the a an and or but if then than that this those these of to in on at by for with from as is are was were be been it its he she they we you i not so just do does did".split(" ");
+  var freq={};
+  body.toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).forEach(function(w){
+    if(w.length>3 && stop.indexOf(w)<0) freq[w]=(freq[w]||0)+1;
+  });
+  var scored = sentences.map(function(s,idx){
+    var words=s.toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/);
+    var score=words.reduce(function(a,w){return a+(freq[w]||0);},0)/Math.max(3,words.length);
+    if(idx<2) score*=1.35;
+    return {s:s.trim(),score:score,idx:idx};
+  }).sort(function(a,b){return b.score-a.score;}).slice(0,Math.min(3,sentences.length))
+    .sort(function(a,b){return a.idx-b.idx;});
+  var words=body.split(/\s+/).filter(Boolean).length;
+  var top=Object.keys(freq).sort(function(a,b){return freq[b]-freq[a];}).slice(0,5);
+  return "**TL;DR — "+sentences.length+" sentences, "+words+" words.** "+
+    scored.map(function(x){return x.s;}).join(" ")+
+    "\n\n**Key terms:** "+top.join(", ")+
+    "\n\n**As bullets:**\n"+scored.map(function(x){return "- "+x.s.replace(/^[-•]\s*/,"");}).join("\n");
+}
+
+function rewrite(text){
+  var body = text.replace(/^(rewrite|make it (shorter|professional|friendlier|clearer)|simplify|expand)[:\s-]*/i,"").trim();
+  if(body.length<20) return "Give me a sentence after the instruction, e.g. `make it professional: that thing you sent is broken and slow`.";
+  var mode = /shorter/i.test(text)?"shorter":/professional/i.test(text)?"professional":
+             /friendlier|friendly/i.test(text)?"friendlier":/clearer|simple|simplify/i.test(text)?"clearer":
+             /expand|longer/i.test(text)?"expanded":"clearer";
+  var s = body.replace(/\s+/g," ");
+  var out;
+  if(mode==="shorter") out = s.split(/(?<=[.!?])\s+/).slice(0,2).join(" ");
+  else if(mode==="professional") out = s.charAt(0).toUpperCase()+s.slice(1).replace(/\bi\b/g,"I").replace(/\bdon't\b/,"do not").replace(/\bcan't\b/,"cannot").replace(/\bstuff\b/,"details").replace(/\bgonna\b/,"going to");
+  else if(mode==="friendlier") out = s.replace(/[.!]$/,"!")+" Let me know if that helps 🙂";
+  else if(mode==="expanded") out = s+"  \n\nTo add a little more: the practical next step is to confirm who owns it, what good looks like, and by when.";
+  else out = s.replace(/[,;]\s*/g,", ").replace(/\s+(and|but|so)\s+/gi,", and ");
+  return "**"+titleCase(mode)+" version**\n\n"+out+"\n\n*Original: "+s.split(/\s+/).length+" words → this: "+out.split(/\s+/).length+" words.*";
+}
+
+function plan(q){
+  var m = q.match(/\b(\d+)\s*(day|week|month|hour)s?\b/i);
+  var n = m?parseInt(m[1]):5;
+  var unit = m?m[2].toLowerCase():"step";
+  var subject = topicOf(q)||"this goal";
+  if(n>30) n=30;
+  var verbs = {day:["Understand the shape of it","Do the smallest ugly version","Sharpen the weakest part","Test it on someone else","Write down what you'd change"],
+    week:["Scope and research","Build the core","Make it usable","Make it good","Ship and review"],
+    month:["Foundation","First milestone","Second milestone","Polish","Launch","Retro"],
+    hour:["Sketch","Draft","Refine","Cut","Final pass"]}[unit]||["Step","Step","Step","Step","Step"];
+  var out="### "+n+"-"+titleCase(unit)+" plan — *"+subject+"*\n\n";
+  for(var i=0;i<n;i++){
+    var v=verbs[i%verbs.length];
+    out+="- **"+unit.charAt(0).toUpperCase()+unit.slice(1)+" "+(i+1)+":** "+v+" — the only thing that matters is that it's done, not perfect\n";
+  }
+  return out+"\n**Rule of thumb:** protect the first slot each "+unit+" — momentum is the feature. Want this as a checklist I can tick off? Ask me to *expand step 1*.";
+}
+
+function codeStats(q){
+  var m=q.match(/(?:count|how many)\s+(words?|characters?|chars?|sentences?|lines?|vowels?|consonants?)/i);
+  var body=q.replace(/^.*?(?:count|how many)\s+\w+\s+(?:in|of|this|to)?\s*[:\-]?\s*/i,"").trim();
+  if(!m) return null;
+  if(body.length<2) return "Type **count words in:** `<paste text>` and I'll do the arithmetic.";
+  var kind=m[1].toLowerCase();
+  var words=body.split(/\s+/).filter(Boolean);
+  var letters=body.replace(/\s/g,"");
+  var vowels=(body.match(/[aeiou]/gi)||[]).length;
+  var data={
+    words:words.length+" words",
+    characters:body.length+" characters ("+letters.length+" ignoring spaces)",
+    chars:body.length+" characters ("+letters.length+" ignoring spaces)",
+    sentences:(body.match(/[.!?]+/g)||[]).length+" sentences",
+    lines:body.split(/\n/).length+" lines",
+    vowels:vowels+" vowels, "+(letters.length-vowels)+" consonants"
+  }[kind.replace(/s$/,"")];
+  var avg=(words.length/(body.match(/[.!?]+/g)||[1]).length).toFixed(1);
+  return "**"+data+"**\n\n- reading time ≈ "+Math.max(1,Math.round(words.length/230))+" min\n- avg words per sentence ≈ "+avg;
+}
+
+function randomish(q){
+  var w=q.toLowerCase();
+  if(/(coin|heads|tails)/.test(w)){ var r=Math.random()<.5; return "🪙 "+(r?"Heads.":"Tails.")+" *(fair coin, decided in your browser)*"; }
+  var d=w.match(/(\d+)\s*(?:sided|d)?\s*die|roll.*?(\d+)/);
+  if(/(dice|die|rolls?|dd+)/.test(w)){
+    var sides=parseInt((w.match(/d(\d+)/)||[])[1]||"6",10);
+    var count=parseInt((w.match(/(\d+)\s*d\d+/)||[])[1]||"1",10);
+    var rolls=[];var total=0;
+    for(var i=0;i<Math.min(count,20);i++){var v=1+Math.floor(Math.random()*sides);rolls.push(v);total+=v;}
+    return "🎲 Rolls: `"+rolls.join(", ")+"` — **total "+total+"** (max possible "+sides*count+")";
+  }
+  var rng=w.match(/between\s+(-?\d+)\s+and\s+(-?\d+)/);
+  if(/\b(random)\b/.test(w) && rng){
+    var a=+rng[1],b=+rng[2]; if(a>b){var t=a;a=b;b=t;}
+    return "🎯 **"+(a+Math.floor(Math.random()*(b-a+1)))+"** — drawn from "+a+"–"+b+".";
+  }
+  if(/\brandom number\b|pick a number/.test(w)) return "🎯 **"+(1+Math.floor(Math.random()*100))+"** *(1–100)*";
+  var choice=q.split(/\b(?:or|vs\.?|versus)\b|,/).map(function(x){return x.trim();}).filter(function(x){return x.length>1&&x.length<60;});
+  if(/(should i|which one|pick|choose|decide)/.test(w) && choice.length>=2){
+    return "🤔 I'd take **“"+pick(choice.slice(-1))+"”**.\n\n- Best if: that option's main upside is something you actually need this week\n- Skip if: you're only tempted because it's the novel one\n\n*Tell me the trade-off you're stuck on and I'll lay out a pro/con grid.*";
+  }
+  return null;
+}
+
+var FACTS = {
+  "speed of light":"299,792,458 m/s — about 1 second to reach the Moon (from Earth), 8 min 20 s to the Sun",
+  "tallest mountain":"Mount Everest, 8,849 m above sea level",
+  "largest ocean":"the Pacific — about 165.25 million km², larger than all land combined",
+  "largest planet":"Jupiter, ~1,321 Earth volumes",
+  "smallest country":"Vatican City, ~0.49 km² with around 800 residents",
+  "longest river":"the Nile (~6,650 km); the Amazon is a close and contested second",
+  "human bones":"206 in adults; babies start with roughly 300 and fuse many",
+  "photosynthesis":"6CO₂ + 6H₂O + light → C₆H₁₂O₆ + 6O₂",
+  "pythagoras":"a² + b² = c² for right triangles",
+  "gravity":"9.80665 m/s² at Earth's surface",
+  "water boils":"100 °C at sea level; ~95 °C at 1,600 m, ~66 °C on Everest",
+  "prime":"a whole number greater than 1 with exactly two divisors: 1 and itself",
+  "derivative":"the instantaneous rate of change — the slope of the tangent line",
+  "binary":"base 2, digits 0 and 1; each position is a power of two",
+  "http 404":"the server is reachable but found nothing at that path",
+  "tcp vs udp":"TCP guarantees ordered delivery with retransmission; UDP sends fast and lets you drop",
+  "big o":"how work grows as input grows — O(n) doubles when n doubles, O(n²) quadruples",
+  "timezone":"UTC is the reference; local offsets are political and can change year to year"
+};
+function hasW(w, k){
+  var esc = String(k).replace(/[.*+?^${}()|[\]\\]/g, function(c){ return "\\"+c; });
+  return new RegExp("(^|[^a-z0-9])" + esc + "([^a-z0-9]|$)").test(w);
+}
+function fact(q){
+  var w=q.toLowerCase();
+  for(var k in FACTS){
+    if(hasW(w,k)) return "**"+titleCase(k)+"** — "+FACTS[k]+"\n\n*Stable fact from my built-in table — I keep a small one on purpose rather than guessing.*";
+  }
+  return null;
+}
+
+function dateTime(q){
+  var now=new Date(), w=q.toLowerCase();
+  if(/\b(time|date|today|day is it|current)\b/.test(w)){
+    var out="🕒 **"+now.toLocaleTimeString()+"** — "+now.toDateString()+
+      "\n\n- ISO: `"+now.toISOString()+"`\n- Week "+Math.ceil((((now-new Date(now.getFullYear(),0,1))/864e5)+new Date(now.getFullYear(),0,1).getDay()+1)/7)+
+      " of "+now.getFullYear()+"\n- "+Math.round((now-new Date(now.getFullYear(),0,0))/864e5)+" days into the year";
+    return out;
+  }
+  var m=q.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})\s+(?:and|-|to)\s+(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})/);
+  if(m){
+    var a=new Date(+m[3],+m[1]-1,+m[2]), b=new Date(+m[6],+m[4]-1,+m[5]);
+    var days=Math.round((b-a)/864e5);
+    return "**"+days+" days** between "+a.toDateString()+" and "+b.toDateString()+
+      "\n\n- that's "+(days/7).toFixed(1)+" weeks or "+(days/30.44).toFixed(1)+" months\n- weekdays only ≈ "+Math.round(days*5/7);
+  }
+  return null;
+}
+
+var DICT = {
+  "algorithm":"A finite, unambiguous recipe that turns an input into an output. The interesting part is never “does it work” but “what does it cost as things grow”.",
+  "api":"A contract: this shape goes in, that shape comes out, and both sides agree not to surprise each other.",
+  "cache":"Storing a result close to where it's needed so the expensive path runs less often. Two hard problems: invalidation and names.",
+  "latency":"How long one request takes. Bandwidth is how much you can move at once — different bottleneck, different fix.",
+  "refactor":"Changing structure without changing behaviour. The test suite is what lets you be brave.",
+  "async":"Deferring work and continuing now, then dealing with the result later. Every `await` is a place your state could have changed.",
+  "state":"Anything you have to remember between steps. More state means more ways for two features to argue.",
+  "regex":"A tiny language for describing shapes in text. Powerful, terse, and mostly unreadable six months later."
+};
+function concept(q){
+  var w=q.toLowerCase();
+  for(var k in DICT){ if(hasW(w,k)) return "**"+titleCase(k)+"** — "+DICT[k]+"\n\nAsk me for a code example and I'll show one."; }
+  return null;
+}
+
+function remember(q){
+  var m=q.match(/^(?:remember|note|store|keep in mind)(?: that)?\s+(.+)$/i);
+  if(!m) return null;
+  var body=m[1].trim(), eq=body.match(/(.+?)\s+(?:is|are|=|:)\s+(.+)/i);
+  if(eq){ state.memory[eq[1].trim().toLowerCase()]=eq[2].trim(); }
+  else { state.memory["note "+(Object.keys(state.memory).length+1)]=body; }
+  persist(); renderConvs();
+  var saved = eq ? eq[2].trim() : body;
+  var label = eq ? eq[1].trim() : "note";
+  return "🧠 Saved **“"+label+" → "+saved+"”** — I'll use it in this browser until you say **forget everything**. Type *memory* to see the list.";
+}
+function recall(q){
+  var w=q.toLowerCase();
+  if(/^(memory|what do you (know|remember)|my (facts|notes)|list (memory|facts))/.test(w)){
+    var k=Object.keys(state.memory);
+    if(!k.length) return "Your memory is empty. Try: `remember my name is Sam`.";
+    return "### 🧠 Memory ("+k.length+")\n\n"+k.map(function(x){return "- **"+x+":** "+state.memory[x];}).join("\n")+
+      "\n\n*Stored in localStorage on this device only.*";
+  }
+  for(var key in state.memory){
+    if(w.indexOf(key)>=0) return "From memory — **"+key+":** "+state.memory[key];
+  }
+  return null;
+}
+
+/* ---------------- engine router ---------------- */
+function engineReply(q, chat){
+  var w = q.toLowerCase().trim();
+  if(!w) return "Say something first 🙂";
+
+  if(/^(hi|hello|hey|yo|sup|good (morning|evening|afternoon)|start)$/.test(w))
+    return pick(OPENERS.help)+" I'm **"+PERSONAS[state.persona].name+"**, a small assistant that lives entirely in this tab. I can do maths, conversions, text tools, code recipes, plans and a bit of trivia.\n\nWhat do you want to sort out?";
+
+  if(/\b(thanks|thank you|cheers|appreciate it)\b/.test(w))
+    return "Any time.";
+
+  if(/^(help|what can you do|capabilities|commands|\?)$/.test(w))
+    return "### What I can do\n\n**Numbers & units**\n- `(7+12)*3`, `12% of 340`, `sqrt(144)+8`\n- `10 km in miles`, `72 f in c`, `512 mb in gb`, `3 hrs in min`\n\n**Words**\n- `summarize: <text>`, `make it professional: <text>`, `make it shorter: <text>`\n- `count words in: <text>`, `reverse: <text>`, `upper: <text>`\n- `translate hello to japanese`, `base64 encode: <text>`\n\n**Code**\n- `debounce javascript`, `fetch api example`, `sort list of objects python`, `regex for email`, `docker multi stage`, `git undo last commit`, `cron every 5 minutes`\n\n**Thinking**\n- `5 day plan for learning sql`, `ideas for a side project`, `roll 2d6`, `pick between tea or coffee`\n\n**Memory**\n- `remember my name is Sam` → then ask *what's my name*\n- `memory` to list it, `forget everything` to clear\n\n*Everything runs offline — no requests leave your browser.*";
+
+  if(/forget everything|clear memory/.test(w)){ state.memory={}; persist(); return "🧠 Memory cleared."; }
+  var rem = remember(q); if(rem) return rem;
+  var rec = recall(q); if(rec) return rec;
+
+  if(/^(joke|make me laugh|funny)/.test(w)){
+    var jokes=[
+      "There are 10 kinds of people: those who read binary and those who don't.",
+      "I'd tell you a UDP joke, but you might not get it.",
+      "A SQL walk into a bar. Approaches two tables, asks: *may I join you?*",
+      "My therapist says I have abandonment issues. We'll see if she shows up next session.",
+      "The best thing about a boolean is even if you're wrong, you're only off by one bit.",
+      "Debugging: being the hero in a story you wrote about problems you caused."
+    ];
+    return "😄 "+pick(jokes);
+  }
+
+  var wantsPlan = /\b(plan|roadmap|itinerary|checklist|routine|schedule)\b/.test(w);
+  var wantsIdeas = /\b(ideas|brainstorm|names)\b|suggest some/.test(w);
+  if(!wantsPlan && !wantsIdeas){
+    var sn = snippet(q); if(sn) return sn;
+  }
+  var tr = translate(q); if(tr) return tr;
+  var cv = convert(q); if(cv) return cv;
+
+  if(/^\s*(summarize|tl;?dr|summary of)\b/i.test(q) || (w.indexOf("summar")==0)) return summarize(q);
+  if(/^\s*(rewrite|make it (shorter|professional|friendlier|clearer)|simplify|expand|fix the wording)\b/i.test(q)) return rewrite(q);
+  var cs = codeStats(q); if(cs) return cs;
+
+  if(/^(reverse|flip text|upper|uppercase|lower|lowercase|titlecase|title case|slug|kebab|snake|base64 (encode|decode)|word count)\b/.test(w)){
+    var body=q.replace(/^[a-z0-9 ]+[:\-\s]*/i,"").trim();
+    var m2=q.match(/^(reverse|upper|uppercase|lower|lowercase|titlecase|title case|slug|snake|kebab|base64 encode|base64 decode|word count)\b[:\-\s]*(.*)$/i);
+    body=m2?m2[2].trim():body;
+    if(!body) return "Give me some text, e.g. `reverse: hello world`.";
+    var cmd=(m2?m2[1]:"").toLowerCase();
+    if(/reverse/.test(cmd)) return "**Reversed:**\n\n`"+body.split("").reverse().join("")+"`";
+    if(/upper/.test(cmd)) return body.toUpperCase();
+    if(/lower/.test(cmd)) return body.toLowerCase();
+    if(/title/.test(cmd)) return titleCase(body);
+    if(/slug|kebab/.test(cmd)) return "`"+body.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+"`";
+    if(/snake/.test(cmd)) return "`"+body.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"")+"`";
+    if(/base64 encode/.test(cmd)){ try{ return "`"+btoa(unescape(encodeURIComponent(body)))+"`"; }catch(e){ return "That didn't encode cleanly."; } }
+    if(/base64 decode/.test(cmd)){ try{ return decodeURIComponent(escape(atob(body.replace(/\s/g,"")))); }catch(e){ return "That isn't valid base64."; } }
+    return "**"+body.split(/\s+/).filter(Boolean).length+" words**, "+body.length+" characters.";
+  }
+
+  var rd = randomish(q); if(rd) return rd;
+  var dt = dateTime(q); if(dt) return dt;
+  var fc = fact(q); if(fc) return fc;
+  var cc = concept(q); if(cc) return cc;
+  if(/^(what is|who is|who was|who are|explain|define)\s+/.test(w) || w.length<52){
+    var f2=[];
+    for(var k in FACTS) if(hasW(w,k)) f2.push(k);
+    for(var k2 in DICT) if(hasW(w,k2)) f2.push(k2);
+    if(!f2.length && /what is|who is|explain|define/.test(w)) return null;
+  }
+  if(/\b(plan|roadmap|step by step|itinerary|checklist|routine)\b/.test(w) || /\d+\s*(day|week|month|hour)s?\b/.test(w)) return plan(q);
+  var id = ideas(q); if(id) return id;
+
+  // arithmetic last so unit/word patterns win first
+  var arith = w.replace(/^(what(?:'s| is)?|calculate|compute|eval(uate)?|how much is|solve)\s*/,"")
+               .replace(/[?]/g,"").replace(/\bplus\b/g,"+").replace(/\bminus\b/g,"-")
+               .replace(/\btimes\b/g,"*").replace(/\bdivided? by\b/g,"/").trim();
+  if(/^[\s\d.a-z()+\-*/%^e,]+$/.test(arith) && /[\d(]/.test(arith) && /[+\-*\/^%]|sqrt|log|sin|cos/.test(arith)){
+    var shown = arith;
+    arith = arith.replace(/×/g,"*").replace(/÷/g,"/")
+                 .replace(/(\d+(?:\.\d+)?)\s*%\s*of\s+/g,"($1/100)*")
+                 .replace(/(\d+(?:\.\d+)?)\s*%/g,"($1/100)")
+                 .replace(/(\d),(\d{3})/g,"$1$2");
+    var r = safeMath(arith);
+    if(r && r.err) return "⚠️ "+r.err+"\n\nI read it as `"+shown+"` — the supported grammar is `+ - * / % ^ ( )`, and `sqrt abs sin cos tan ln log round floor ceil`, plus constants `pi` and `e`.";
+    if(r) return "**"+fmt(r.value)+"**\n\n```text\n"+shown+" = "+fmt(r.value)+"\n```\n\n*Rewritten as `"+arith+"`, evaluated with a shunting-yard parser — no `eval`, so nothing sneaky can run.*";
+  }
+  if(/^\d+\s*%.*\d/.test(w) || /\b(half|double|square|cube) of\b/.test(w)){
+    var mm=w.match(/(\d+(?:\.\d+)?)\s*%\s*of\s*(\d+(?:\.\d+)?)/);
+    if(mm){ var v=+mm[1]/100*+mm[2]; return "**"+mm[1]+"% of "+mm[2]+" = "+fmt(v)+"**\n\n- "+mm[2]+" minus that: "+fmt(+mm[2]-v)+"\n- "+mm[2]+" plus that: "+fmt(+mm[2]+v); }
+    var mm2=w.match(/(half|double|square|cube) of (\d+(?:\.\d+)?)/);
+    if(mm2){ var n=+mm2[2]; var out=mm2[1]==="half"?n/2:mm2[1]==="double"?n*2:mm2[1]==="square"?n*n:n*n*n;
+      return "**"+titleCase(mm2[1])+" of "+n+" = "+fmt(out)+"**"; }
+  }
+
+  return null; // -> fallback pool
+}
+
+/* ---------------- response shaping ---------------- */
+function composeReply(q, chat){
+  var core = engineReply(q, chat);
+  var p = PERSONAS[state.persona];
+
+  // nothing matched: the persona decides how the "I don't have that" answer is delivered
+  if(core===null || core===undefined){
+    core = pick(FALLBACKS).replace(/\{topic\}/g, topicOf(q));
+    return pick(p.opener)+"\n\n"+core+"\n\n*"+p.closer+"*";
+  }
+  if(/🧠|From memory/.test(core)) return core;   // memory handlers already show it
+
+  var mem="";
+  var keys=Object.keys(state.memory);
+  for(var i=0;i<keys.length;i++){
+    if(q.toLowerCase().indexOf(keys[i])>=0){ mem="\n\n> *From memory — "+keys[i]+": "+state.memory[keys[i]]+"*"; break; }
+  }
+  return core+mem;
+}
+
+/* ---------------- chips / suggestions ---------------- */
+var CHIP_BANK = [
+  ["12% of 340","(7+12)*3 + sqrt(144)","10 km in miles"],
+  ["summarize: paste your text here","translate hello to japanese","count words in: the quick brown fox"],
+  ["debounce javascript","regex for email","git undo last commit"],
+  ["5 day plan for learning sql","ideas for a side project","roll 2d6"],
+  ["what is an algorithm","tcp vs udp","big o"],
+  ["remember my name is Sam","memory","help"]
+];
+function renderChips(){
+  var set = CHIP_BANK[Math.floor(Math.random()*CHIP_BANK.length)];
+  el.chips.innerHTML = set.map(function(c){return '<button class="chip">'+esc(c)+'</button>';}).join("");
+}
+el.chips.addEventListener("click",function(e){
+  var b=e.target.closest(".chip"); if(!b) return;
+  var t=b.textContent;
+  el.text.value = /^summarize|^count words/.test(t) ? t.replace(/ paste your text here$/,"").replace(/: the quick brown fox$/,"")+" " : t;
+  el.text.focus(); autosize(); syncSend();
+  if(!/^(summarize|count)/.test(t)) send();
+});
+
+/* ---------------- rendering ---------------- */
+function rel(ts){
+  var d=Date.now()-ts;
+  if(d<6e4) return "just now";
+  if(d<36e5) return Math.floor(d/6e4)+"m ago";
+  if(d<864e5) return Math.floor(d/36e5)+"h ago";
+  var days=Math.floor(d/864e5);
+  if(days<7) return days+"d ago";
+  return new Date(ts).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+}
+function preview(c){
+  var last=c.messages[c.messages.length-1];
+  if(!last) return "No messages yet";
+  return (last.role==="user"?"You: ":"Nova: ")+last.content.replace(/[#*`>]/g,"").replace(/\s+/g," ").slice(0,46);
+}
+function renderConvs(){
+  var q=el.search.value.trim().toLowerCase();
+  var list = state.chats.filter(function(c){
+    if(!q) return true;
+    if(c.title.toLowerCase().indexOf(q)>=0) return true;
+    return c.messages.some(function(m){return m.content.toLowerCase().indexOf(q)>=0;});
+  });
+  el.convs.innerHTML = list.length ? '<div class="conv-h">'+(q?("Results ("+list.length+")"):"Chats ("+list.length+")")+'</div>'+
+    list.map(function(c){
+      return '<div class="conv'+(c.id===state.activeId?" active":"")+'" data-id="'+c.id+'">'+
+        '<span class="dot"></span><div class="meta"><div class="t">'+esc(c.title)+'</div>'+
+        '<div class="p">'+esc(preview(c))+'</div></div>'+
+        '<div class="ops">'+
+          '<button class="icon-btn" data-op="rename" title="Rename"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>'+
+          '<button class="icon-btn" data-op="del" title="Delete"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>'+
+        '</div></div>';
+    }).join("") : '<div class="conv-h">No chats match “'+esc(q)+'”</div>';
+  el.statChats.textContent = state.chats.length+" chat"+(state.chats.length===1?"":"s");
+}
+function msgHTML(m, i, total){
+  var isU=m.role==="user";
+  return '<div class="msg'+(isU?" user":"")+'" data-i="'+i+'">'+
+    '<div class="av '+(isU?"u":"a")+'">'+(isU?"You".slice(0,1):"N")+'</div>'+
+    '<div class="body"><div class="who"><b>'+(isU?"You":PERSONAS[m.persona||state.persona].name)+'</b>'+
+      '<span>'+rel(m.ts)+'</span>'+(m.ms?'<span class="tip">'+m.ms+" ms · ~"+Math.round(m.content.split(/\s+/).length/1.3)+" tok</span>":'')+'</div>'+
+    '<div class="bubble">'+(isU?esc(m.content).replace(/\n/g,"<br>"):md(m.content))+'</div>'+
+    '<div class="acts">'+
+      '<button data-op="copy"><svg viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M5 15V6a2 2 0 0 1 2-2h8" stroke="currentColor" stroke-width="1.8"/></svg>Copy</button>'+
+      (isU?'<button data-op="edit"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20h4l10-10-4-4L4 16v4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>Reuse</button>'
+           :(i===total-1?'<button data-op="regen"><svg viewBox="0 0 24 24" fill="none"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Regenerate</button>':""))+
+    '</div></div></div>';
+}
+function heroHTML(){
+  var cards=[
+    ["🧮","Numbers","`(7+12)*3`, `12% of 340`","Try: calculate (7+12)*3 + sqrt(144)"],
+    ["📏","Conversions","km↔mi, °F↔°C, MB↔GB","Try: 10 km in miles"],
+    ["📝","Text tools","summarize, rewrite, count","Try: make it professional: hey this is broken"],
+    ["💻","Code recipes","debounce, fetch, regex, git","Try: debounce javascript"],
+    ["🗓️","Plans","day/week roadmaps","Try: 5 day plan for learning sql"],
+    ["🧠","Memory","keeps facts on-device","Try: remember my name is Sam"]
+  ];
+  return '<div class="hero"><div class="mark">'+
+    '<svg viewBox="0 0 24 24" fill="none"><path d="M4 19V6l14 13V6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
+    '<h2>Smart chat, running in your browser</h2>'+
+    '<p>A complete chat interface with a deterministic on-device brain: maths, units, text tools, code recipes, plans and memory. No accounts, no network calls.</p>'+
+    '<div class="grid">'+cards.map(function(c){
+      return '<button class="card" data-demo="'+esc(c[3])+'"><div class="k"><span>'+c[0]+'</span>'+c[1]+'</div><div class="d">'+c[2]+'</div></button>';
+    }).join("")+'</div></div>';
+}
+function renderThread(){
+  var c=active();
+  el.title.textContent=c.messages.length?c.title:(state.chats.length>1?c.title:"New chat");
+  el.wrap.innerHTML = c.messages.length
+    ? c.messages.map(function(m,i){return msgHTML(m,i,c.messages.length);}).join("")
+    : heroHTML();
+  el.persona.value=state.persona;
+  scrollBottom(true);
+  syncSend();
+}
+function scrollBottom(force){
+  var t=el.thread, near = t.scrollHeight - t.scrollTop - t.clientHeight < 160;
+  if(force||near) t.scrollTop = t.scrollHeight;
+}
+function setThinking(on){
+  el.status.textContent = on ? "thinking…" : "ready";
+  if(on){
+    var d=document.createElement("div");
+    d.className="msg"; d.id="thinking";
+    d.innerHTML='<div class="av a">N</div><div class="body"><div class="who"><b>'+PERSONAS[state.persona].name+'</b></div>'+
+      '<div class="bubble"><div class="thinking"><span class="dots"><i></i><i></i><i></i></span>choosing a routine…</div></div></div>';
+    el.wrap.appendChild(d); scrollBottom(true);
+  } else {
+    var t=$("thinking"); if(t) t.remove();
+  }
+}
+
+/* ---------------- streaming ---------------- */
+function streamInto(node, text, done){
+  state.streaming=true; state.cancel=false;
+  el.send.hidden=true; el.stop.hidden=false; el.status.textContent="writing…";
+  node.classList.add("caret");
+  var i=0, started=performance.now(), lastRender=0;
+  // timer-driven (not rAF) so output keeps flowing in hidden/background tabs
+  var timer=setInterval(function(){
+    if(state.cancel){ stop(); node.innerHTML=md(text.slice(0,i)); finish(); return; }
+    i=Math.min(text.length, i+4);
+    var now=performance.now();
+    if(i>=text.length || now-lastRender>36){   // throttle repaints to ~28fps
+      node.innerHTML=md(text.slice(0,i));
+      lastRender=now;
+      scrollBottom();
+    }
+    if(i>=text.length) finish();
+  },16);
+  function stop(){ clearInterval(timer); }
+  function finish(){
+    stop();
+    node.classList.remove("caret");
+    var shown = state.cancel ? text.slice(0,i) : text;
+    node.innerHTML=md(shown);
+    state.streaming=false; el.send.hidden=false; el.stop.hidden=true; el.status.textContent="ready";
+    done(Math.round(performance.now()-started), shown);
+  }
+  // safety: if the interval is throttled hard, complete within 4s of the estimate
+  setTimeout(function(){ if(state.streaming && i<text.length && document.hidden) { i=text.length; finish(); } }, Math.max(1200, text.length*1.2));
+}
+
+/* ---------------- send ---------------- */
+function autosize(){
+  el.text.style.height="auto";
+  el.text.style.height=Math.min(170,el.text.scrollHeight)+"px";
+  el.cnt.textContent = el.text.value.length?el.text.value.length+" chars":"";
+  syncSend();
+}
+function syncSend(){ el.send.disabled = !el.text.value.trim() || state.streaming; }
+
+function send(){
+  var raw=el.text.value.trim();
+  if(!raw || state.streaming) return;
+  var c=active();
+  c.messages.push({role:"user",content:raw,ts:Date.now(),persona:state.persona});
+  if(c.messages.length===1 || /^New chat$/.test(c.title)){
+    c.title = raw.replace(/\s+/g," ").slice(0,42) + (raw.length>42?"…":"");
+  }
+  el.text.value=""; autosize();
+  if(c.messages.length===2 && state.chats.length===1){ /* keep */ }
+  persist(); renderConvs(); renderThread();
+  respond();
+}
+function respond(){
+  var c=active();
+  var last=c.messages[c.messages.length-1];
+  if(last.role!=="user") return;
+  setThinking(true);
+  setTimeout(function(){
+    var text=composeReply(last.content,c);
+    var msg={role:"assistant",content:"",ts:Date.now(),persona:state.persona};
+    c.messages.push(msg);
+    setThinking(false);
+    renderThread();
+    var bubble=el.wrap.lastElementChild.querySelector(".bubble");
+    streamInto(bubble,text,function(ms,shown){
+      msg.content = shown || "";
+      msg.ms = ms;
+      if(!shown) { c.messages.pop(); }         // stopped before anything was written
+      persist(); renderConvs(); renderThread();
+      el.text.focus();
+    });
+  }, 240+Math.random()*300);
+}
+
+/* ---------------- actions ---------------- */
+function dialog(opts){
+  return new Promise(function(resolve){
+    var box=$("dlg"), inp=$("dlgI"), yes=$("dlgYes"), no=$("dlgNo"), title=$("dlgT");
+    title.textContent=opts.title;
+    inp.style.display = opts.confirm ? "none" : "";
+    inp.value = opts.value || "";
+    yes.textContent = opts.confirm ? (opts.okLabel||"Confirm") : (opts.okLabel||"Save");
+    yes.className = opts.confirm ? "d" : "p";
+    box.hidden=false;
+    if(!opts.confirm) setTimeout(function(){ inp.focus(); inp.select(); },30);
+    function close(val){
+      box.hidden=true; inp.onkeydown=yes.onclick=no.onclick=null;
+      resolve(val);
+    }
+    yes.onclick=function(){ close(opts.confirm?true:(inp.value.trim()||null)); };
+    no.onclick=function(){ close(opts.confirm?false:null); };
+    inp.onkeydown=function(e){
+      if(e.key==="Enter"){ e.preventDefault(); close(inp.value.trim()||null); }
+      if(e.key==="Escape"){ e.preventDefault(); close(null); }
+    };
+  });
+}
+function toast(msg){
+  el.toast.textContent=msg; el.toast.classList.add("show");
+  clearTimeout(toast._t); toast._t=setTimeout(function(){el.toast.classList.remove("show");},1900);
+}
+function copy(text){
+  var done=function(){toast("Copied to clipboard");};
+  if(navigator.clipboard&&window.isSecureContext){ navigator.clipboard.writeText(text).then(done,fallback); }
+  else fallback();
+  function fallback(){
+    var ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); done(); }catch(e){ toast("Copy blocked by the browser"); }
+    document.body.removeChild(ta);
+  }
+}
+function download(name,content,type){
+  var blob=new Blob([content],{type:type}); var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+  toast("Downloaded "+name);
+}
+function exportMD(){
+  var c=active();
+  var out="# "+c.title+"\n\n_"+PERSONAS[state.persona].name+" · "+c.messages.length+" messages · "+new Date().toLocaleString()+"_\n\n"+
+    c.messages.map(function(m){
+      return "### "+(m.role==="user"?"You":PERSONAS[m.persona||state.persona].name)+"  \n<sub>"+new Date(m.ts).toLocaleTimeString()+"</sub>\n\n"+m.content;
+    }).join("\n\n---\n\n");
+  download((c.title||"chat").replace(/[^\w\-]+/g,"-").toLowerCase().slice(0,40)+".md",out,"text/markdown");
+}
+function exportJSON(){
+  var c=active();
+  download("nova-chat.json",JSON.stringify({exported:new Date().toISOString(),persona:state.persona,memory:state.memory,chats:state.chats},null,2),"application/json");
+}
+function newChat(){
+  if(state.activeId){
+    var cur=active();
+    if(!cur.messages.length){ el.text.focus(); return; }
+  }
+  var c={id:uid(),title:"New chat",persona:state.persona,messages:[]};
+  state.chats.unshift(c); state.activeId=c.id;
+  persist(); renderConvs(); renderThread(); renderChips(); el.text.focus();
+  toast("Started a new chat");
+}
+
+/* ---------------- events ---------------- */
+el.newChat.addEventListener("click",newChat);
+el.send.addEventListener("click",send);
+el.stop.addEventListener("click",function(){ state.cancel=true; toast("Stopped"); });
+el.text.addEventListener("input",function(){ autosize(); });
+el.text.addEventListener("keydown",function(e){
+  if(e.key==="Enter"&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){ e.preventDefault(); send(); }
+});
+el.inputBox.addEventListener("focusin",function(){el.inputBox.classList.add("focus");});
+el.inputBox.addEventListener("focusout",function(){el.inputBox.classList.remove("focus");});
+el.persona.addEventListener("change",function(){
+  state.persona=el.persona.value; active().persona=state.persona; persist(); renderThread();
+  toast(PERSONAS[state.persona].name+" is on");
+});
+el.search.addEventListener("input",renderConvs);
+
+el.convs.addEventListener("click",function(e){
+  var op=e.target.closest("[data-op]"); var row=e.target.closest(".conv"); if(!row) return;
+  var id=row.dataset.id;
+  if(op){
+    var c=state.chats.filter(function(x){return x.id===id;})[0];
+    if(op.dataset.op==="rename"){
+      dialog({title:"Rename chat", value:c.title}).then(function(t){
+        if(t){ c.title=t; persist(); renderConvs(); renderThread(); toast("Renamed"); }
+      });
+    } else {
+      var doomed=c;
+      dialog({title:"Delete “"+doomed.title+"” and its "+doomed.messages.length+" message(s)?", confirm:true, okLabel:"Delete"}).then(function(ok){
+        if(!ok) return;
+        state.chats=state.chats.filter(function(x){return x.id!==id;});
+        if(state.activeId===id) state.activeId=state.chats.length?state.chats[0].id:null;
+        if(!state.chats.length) active();
+        persist(); renderConvs(); renderThread(); toast("Chat deleted");
+      });
+    }
+    e.stopPropagation(); return;
+  }
+  state.activeId=id; persist(); renderConvs(); renderThread(); closeDrawer();
+});
+
+el.wrap.addEventListener("click",function(e){
+  var cp=e.target.closest("[data-copy]");
+  if(cp){ copy(cp.getAttribute("data-copy")); return; }
+  var card=e.target.closest("[data-demo]");
+  if(card){ el.text.value=card.getAttribute("data-demo").replace(/^Try:\s*/,""); autosize(); el.text.focus(); return; }
+  var b=e.target.closest(".acts [data-op]");
+  if(!b) return;
+  var i=+b.closest(".msg").dataset.i, c=active(), m=c.messages[i];
+  if(b.dataset.op==="copy"){ copy(m.content); return; }
+  if(b.dataset.op==="edit"){ el.text.value=m.content; autosize(); el.text.focus(); return; }
+  if(b.dataset.op==="regen"){
+    if(state.streaming) return;
+    var prompt_=null;
+    for(var k=i-1;k>=0;k--) if(c.messages[k].role==="user"){ prompt_=c.messages[k]; break; }
+    if(prompt_==null) return;
+    c.messages=c.messages.slice(0,k+1);          // drop this reply, keep the prompt
+    persist(); renderThread(); respond();
+  }
+});
+
+el.menuBtn.addEventListener("click",function(e){
+  e.stopPropagation();
+  var open = el.menu.classList.toggle("open");
+  el.menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+});
+document.addEventListener("click",function(){ el.menu.classList.remove("open"); el.menuBtn.setAttribute("aria-expanded","false"); });
+el.menu.addEventListener("click",function(e){
+  var b=e.target.closest("[data-act]"); if(!b) return;
+  var a=b.dataset.act, c=active();
+  if(a==="rename"){
+    dialog({title:"Rename chat", value:c.title}).then(function(t){
+      if(t){ c.title=t; persist(); renderConvs(); renderThread(); toast("Renamed"); }
+    });
+  }
+  if(a==="export") exportMD();
+  if(a==="json") exportJSON();
+  if(a==="clear"){
+    dialog({title:"Delete all "+c.messages.length+" messages in this chat?", confirm:true, okLabel:"Clear"}).then(function(ok){
+      if(!ok) return;
+      c.messages=[]; c.title="New chat"; persist(); renderConvs(); renderThread(); toast("Chat cleared");
+    });
+  }
+  if(a==="delete"){
+    dialog({title:"Delete this chat for good?", confirm:true, okLabel:"Delete"}).then(function(ok){
+      if(!ok) return;
+      state.chats=state.chats.filter(function(x){return x.id!==c.id;});
+      state.activeId=state.chats.length?state.chats[0].id:null;
+      if(!state.chats.length) active();
+      persist(); renderConvs(); renderThread(); toast("Chat deleted");
+    });
+  }
+});
+
+function openDrawer(){ el.side.classList.add("open"); el.back.classList.add("open"); }
+function closeDrawer(){ el.side.classList.remove("open"); el.back.classList.remove("open"); }
+el.burger=$("burger"); el.burger.addEventListener("click",openDrawer);
+el.back.addEventListener("click",closeDrawer);
+
+el.memoryBtn.addEventListener("click",function(){
+  var k=Object.keys(state.memory);
+  closeDrawer();
+  var msg = k.length
+    ? "### 🧠 Memory\n\n"+k.map(function(x){return "- **"+x+":** "+state.memory[x];}).join("\n")+"\n\n*On-device only — say `forget everything` to clear.*"
+    : "### 🧠 Memory is empty\n\nAsk me to `remember my name is Sam` and I'll keep it in this browser, then use it when you bring it up.";
+  var c=active();
+  c.messages.push({role:"assistant",content:msg,ts:Date.now(),persona:state.persona,ms:12});
+  renderThread(); persist(); renderConvs();
+});
+el.shortcutsBtn.addEventListener("click",function(){
+  closeDrawer();
+  var c=active();
+  c.messages.push({role:"assistant",ts:Date.now(),persona:state.persona,ms:9,content:
+    "### Keyboard\n\n- `Enter` send · `Shift`+`Enter` newline\n- `Ctrl/Cmd`+`K` new chat\n- `Ctrl/Cmd`+`/` focus search\n- `Esc` stop writing / close menu\n\n### Interface\n\n- **Personality** dropdown changes how I talk\n- **⋮ menu** renames, exports Markdown/JSON, clears or deletes the chat\n- Hover a reply for **Copy** / **Regenerate**; hover a prompt for **Reuse**\n- Sidebar searches titles *and* message bodies"});
+  renderThread(); persist(); renderConvs();
+});
+
+document.addEventListener("keydown",function(e){
+  if(!$("dlg").hidden){
+    if(e.key==="Escape"){ e.preventDefault(); $("dlgNo").click(); }
+    if(e.key==="Enter" && $("dlgI").style.display==="none"){ e.preventDefault(); $("dlgYes").click(); }
+    return;
+  }
+  var mod=e.ctrlKey||e.metaKey;
+  if(mod&&e.key.toLowerCase()==="k"){ e.preventDefault(); newChat(); }
+  if(mod&&e.key==="/"){ e.preventDefault(); el.search.focus(); el.search.select(); }
+  if(e.key==="Escape"){ if(state.cancel===false&&state.streaming){ state.cancel=true; toast("Stopped"); } else { el.menu.classList.remove("open"); closeDrawer(); } }
+});
+el.thread.addEventListener("scroll",function(){ /* keep native */ });
+window.addEventListener("resize",function(){ if(window.innerWidth>900) closeDrawer(); });
+
+/* ---------------- boot ---------------- */
+load();
+if(!state.chats.length) active();
+renderChips(); renderConvs(); renderThread(); autosize();
+})();
+</script>
+</body>
+</html>
+
+```
